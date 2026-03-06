@@ -1,0 +1,155 @@
+---
+description: Rules for AI meal photo analysis, structured outputs, and estimation behavior in Kal.
+globs:
+  - "apps/ios/**/*"
+  - "backend/**/*"
+  - "supabase/**/*"
+  - "**/*meal*"
+  - "**/*nutrition*"
+  - "**/*analysis*"
+alwaysApply: true
+---
+
+# Kal — AI Meal Analysis Rules
+
+## Core responsibility
+The AI meal analysis system estimates food, portions, calories, and macros from a user photo.
+
+This is an estimation system, not a medical or laboratory-grade measurement system.
+
+## Product behavior
+The user experience must always reflect uncertainty appropriately.
+
+Always:
+- treat outputs as estimates
+- allow manual correction
+- show editable results
+- preserve user control before final save
+
+Never:
+- imply perfect accuracy
+- present outputs as certified nutritional truth
+- block the user from correcting wrong estimates
+
+## Output format
+AI meal analysis outputs must be structured and machine-validated.
+
+Prefer a strict JSON schema including fields such as:
+- meal_name
+- detected_items
+- estimated_portion
+- calories
+- protein_g
+- carbs_g
+- fat_g
+- confidence
+- reasoning_summary or notes if needed
+- missing_information_flags if needed
+
+Do not rely on freeform text as the system of record.
+
+## Validation
+All AI outputs must be validated before persistence.
+
+Validation should include:
+- required fields present
+- valid numeric ranges
+- no negative macro values
+- calories and macros in plausible ranges
+- confidence present and normalized
+- payload shape matches schema exactly
+
+If validation fails:
+- do not silently save invalid data
+- return a recoverable error or fallback flow
+
+## Confidence handling
+Confidence must affect UX and downstream handling.
+
+Examples:
+- high confidence: show normal editable result
+- medium confidence: show editable result with mild uncertainty messaging
+- low confidence: encourage user correction and avoid strong assertions
+
+Low-confidence results should never be presented with excessive certainty.
+
+## Portion estimation
+Portion estimation is one of the most error-prone parts of the system.
+
+Therefore:
+- design for correction
+- prefer explicit serving assumptions when needed
+- preserve transparency when assumptions are made
+- do not invent excessive detail unsupported by the image
+
+## Multi-item meals
+For meals with multiple foods:
+- attempt itemization where possible
+- avoid fake precision when separation is unclear
+- allow merged or simplified results if confidence is low
+- keep the editing experience manageable
+
+## Failure modes
+Handle these gracefully:
+- blurry photos
+- poor lighting
+- packaged food with unclear contents
+- mixed dishes
+- hidden ingredients
+- ambiguous portion sizes
+- beverages
+- sauces and toppings
+- partially visible meals
+
+The system should degrade gracefully instead of pretending certainty.
+
+## Nutrition estimation principles
+- macros should be internally plausible
+- calorie totals should roughly align with macro totals
+- avoid mathematically inconsistent outputs
+- avoid extreme values unless strongly supported
+
+## UX requirements
+The meal analysis flow should support:
+1. photo capture or upload
+2. loading state
+3. estimated result
+4. quick manual edits
+5. save to diary
+
+The user should be able to correct:
+- meal name
+- detected items
+- portion sizes
+- calories
+- macros
+
+## Language and copy
+Use copy that communicates estimation responsibly.
+
+Prefer language like:
+- estimated
+- detected
+- review
+- adjust
+- confirm
+
+Avoid language like:
+- exact
+- precise
+- guaranteed
+- medically accurate
+
+## Engineering discipline
+When implementing meal analysis:
+- keep the pipeline observable
+- keep contracts explicit
+- validate before save
+- keep fallback paths simple
+- avoid hidden magic
+
+Do not:
+- bury critical logic in UI code
+- store freeform model text as canonical nutrition data
+- assume the model is always right
+- build speculative “advanced nutrition intelligence” features unless explicitly requested

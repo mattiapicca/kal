@@ -1,0 +1,92 @@
+---
+description: Core product rules for Kal. Applies to all code, planning, and product decisions.
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Kal — Product Rules
+
+## Product identity
+Kal is a focused calorie and macro tracking app inspired by the core loop of photo-based meal analysis.
+
+The product is an AI companion for nutrition tracking, with a narrow MVP scope.
+
+## MVP scope
+The product currently includes only these core capabilities:
+
+1. User onboarding for profile and goal setup
+2. Daily calorie and macro target calculation
+3. AI meal analysis from a food photo
+4. Manual review and correction of the AI estimate
+5. Daily tracking of consumed calories and macros
+6. Simple meal history and daily summary
+
+## Explicitly out of scope
+Do NOT introduce features outside the MVP unless explicitly requested.
+
+Out of scope includes:
+- workout plans
+- exercise logging
+- gym routines
+- recipe generation
+- grocery lists
+- chat coaching experiences
+- social features
+- challenges, streaks, or gamification systems
+- barcode scanning
+- wearables integration
+- health-device integrations
+- web app or Android app unless explicitly requested
+- subscription/paywall implementation unless explicitly requested
+- admin dashboards unless explicitly requested
+
+## Product principles
+Every feature must support the main user loop:
+
+1. Understand personal calorie/macro target
+2. Log meals quickly via photo
+3. Review and correct results if needed
+4. Understand how much has been consumed today
+5. Stay aligned with body-weight goal
+
+If a feature does not improve this loop, do not add it.
+
+## UX principles
+- The app must feel simple, fast, and trustworthy
+- The user should reach value quickly
+- AI estimates must be editable
+- The app should never act like the estimate is perfectly accurate
+- The app should reduce friction, not add complexity
+- Prefer fewer screens and fewer decisions
+
+## Trust and safety
+- Never present nutritional estimates as medical facts
+- Never imply exactness when the system is estimating from images
+- Always preserve room for user correction
+- Avoid health claims, diagnosis, or treatment language
+- Keep language neutral, practical, and non-judgmental
+
+## Output expectations for implementation
+When implementing features:
+- keep the scope narrow
+- prefer the smallest correct implementation
+- avoid speculative abstractions
+- do not add extra architecture “for later” unless clearly needed now
+- do not introduce unrequested product ideas
+
+## Planning behavior
+Before implementing significant features:
+- summarize the goal
+- identify impacted files
+- identify data model changes
+- identify edge cases
+- define acceptance criteria
+
+## Definition of done
+A task is done only if:
+- it matches the requested scope
+- it integrates into the existing core loop
+- it avoids out-of-scope additions
+- it is testable or at least verifiable
+- it keeps the UX simple

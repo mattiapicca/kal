@@ -1,0 +1,116 @@
+---
+description: Backend and database rules for Kal.
+globs:
+  - "backend/**/*"
+  - "supabase/**/*"
+  - "**/*.sql"
+alwaysApply: true
+---
+
+# Kal — Backend Rules
+
+## Backend role
+The backend supports the core product loop:
+- authentication
+- user profile storage
+- target calculation persistence
+- meal records
+- daily aggregates
+- photo storage
+- AI analysis orchestration
+- validation of structured AI output
+
+Do not add backend capabilities outside the MVP unless explicitly requested.
+
+## Preferred stack
+Use a simple backend aligned with:
+- Supabase / Postgres
+- object storage for meal images
+- server-side functions for sensitive orchestration
+- typed data contracts where possible
+
+## Data modeling principles
+Favor a straightforward relational model.
+
+Typical entities should remain close to:
+- users
+- user_profiles
+- goals / targets
+- meals
+- meal_items or meal_analysis results
+- daily summaries if needed
+- uploaded meal photos
+
+Avoid premature complexity:
+- no event sourcing
+- no microservices
+- no unnecessary queueing systems
+- no speculative analytics schemas
+
+## Schema design
+- Use clear table names
+- Use explicit foreign keys
+- Prefer timestamp columns for created/updated tracking
+- Keep nullable fields intentional
+- Add constraints where they protect data quality
+- Write migrations clearly and incrementally
+
+## Source of truth
+- Persist core user and meal data in the backend
+- Do not rely on client-only state for critical records
+- Server-side validation should protect structured AI outputs before persistence
+
+## Security
+- Apply least privilege principles
+- Use row-level security where appropriate
+- Never expose secrets in client code
+- Keep sensitive AI orchestration and validation on the server when possible
+
+## API and function design
+- Keep functions narrow and task-specific
+- Prefer explicit inputs and outputs
+- Return predictable structured payloads
+- Validate all incoming data
+- Fail clearly when data is incomplete or malformed
+
+## Reliability
+- Handle AI failures gracefully
+- Handle image upload failures gracefully
+- Avoid partial writes when possible
+- Preserve data consistency between photo upload, analysis result, and saved meal
+
+## Observability
+At minimum:
+- log important failures
+- log invalid AI payloads
+- make debugging possible without excessive noise
+
+Do not build a large observability platform unless explicitly requested.
+
+## Performance
+Optimize for simplicity first.
+Only optimize after clear need.
+That said:
+- avoid obviously inefficient queries
+- index foreign keys and key lookup paths
+- avoid returning unnecessary payload size
+
+## Migrations and changes
+When changing schema:
+- write additive migrations first when possible
+- avoid destructive changes unless explicitly requested
+- explain data impact
+- keep migrations readable and reversible where practical
+
+## Backend discipline
+Do not:
+- build infrastructure for hypothetical scale
+- introduce services not needed for the MVP
+- add unrelated endpoints
+- mix experimental product ideas into the backend
+
+Always:
+- support the current Kal MVP
+- keep contracts stable
+- validate structured data carefully
+- prefer simple, maintainable systems

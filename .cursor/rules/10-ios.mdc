@@ -1,0 +1,124 @@
+---
+description: iOS app architecture and coding rules for Kal.
+globs:
+  - "apps/ios/**/*"
+alwaysApply: true
+---
+
+# Kal — iOS Rules
+
+## Platform
+Build for iOS only unless explicitly told otherwise.
+
+## Tech stack
+Use:
+- Swift
+- SwiftUI
+- async/await
+- simple MVVM where useful
+
+Avoid:
+- UIKit unless explicitly necessary
+- overengineered coordinators
+- heavy dependency injection frameworks
+- unnecessary third-party libraries
+
+## Architecture principles
+Prefer a simple and readable structure.
+
+Use a pragmatic split such as:
+- Views
+- ViewModels
+- Models
+- Services
+
+Keep business logic out of Views.
+Views should stay presentation-focused.
+ViewModels should orchestrate user actions and async loading.
+Services should encapsulate API/storage logic.
+
+## File and component design
+- Keep files small and focused
+- Prefer composition over giant screens
+- Extract reusable components only after duplication is real
+- Do not create generic abstractions too early
+- Name files clearly by feature
+
+## State management
+- Use SwiftUI-native state tools where appropriate
+- Prefer simple data flow
+- Avoid introducing complex global state unless clearly necessary
+- Keep derived UI state close to the feature
+
+## Concurrency
+- Use async/await for async operations
+- Handle loading, success, and error states explicitly
+- Never ignore async failures silently
+- Ensure UI updates happen safely on the appropriate actor
+
+## UI principles
+The app should feel:
+- minimal
+- calm
+- fast
+- mobile-native
+
+Prefer:
+- clear hierarchy
+- obvious primary actions
+- lightweight forms
+- strong empty states
+- editable result screens
+
+Avoid:
+- dense dashboards
+- excessive settings
+- decorative complexity
+- too many nested flows
+
+## Forms and onboarding
+- Keep onboarding short and progressive
+- Only ask for data needed for target calculation and app personalization
+- Avoid collecting unnecessary profile data
+- Validate inputs clearly
+- Use sensible defaults where possible
+
+## Meal analysis UX
+For photo-based meal logging:
+- keep the flow fast
+- show loading clearly
+- display AI results as estimates
+- allow easy correction of meal name, portions, calories, and macros
+- never lock the user into the AI output
+
+## Error handling
+- Errors must be understandable
+- Prefer actionable messages
+- Offer retry when relevant
+- Avoid technical jargon in user-facing copy
+
+## Testing
+When adding logic-heavy code:
+- add unit tests where practical
+- prioritize testability for calculation and transformation logic
+- avoid fragile UI complexity that is difficult to verify
+
+## Code style
+- Prefer clarity over cleverness
+- Use descriptive names
+- Minimize nesting
+- Avoid force unwraps unless truly guaranteed
+- Keep methods short
+- Add comments only where intent is not obvious from the code
+
+## Implementation discipline
+Do not:
+- refactor unrelated areas during a feature task
+- invent extra tabs or features
+- create speculative reusable systems
+- change app architecture without a strong reason
+
+Always:
+- make the smallest coherent change
+- preserve compileability
+- keep the feature integrated with the existing product flow
