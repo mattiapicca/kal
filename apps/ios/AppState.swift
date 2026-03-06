@@ -62,31 +62,113 @@ enum LoggedMealSource: String {
 final class AppState: ObservableObject {
     @Published var isOnboardingCompleted = false
     @Published var selectedTab: KalTab = .today
+    @Published var selectedDate: Date = Calendar.current.startOfDay(for: Date())
     @Published var profile = UserProfile()
     @Published var dailyTarget: DailyTarget?
     @Published var onboardingValidationMessage: String?
     @Published var savedMeals: [LoggedMeal] = []
 
     var todayMeals: [LoggedMeal] {
-        savedMeals
-            .filter { Calendar.current.isDate($0.loggedAt, inSameDayAs: Date()) }
+        meals(for: Date())
+    }
+
+    var selectedDayMeals: [LoggedMeal] {
+        meals(for: selectedDate)
+    }
+
+    var canGoToNextDay: Bool {
+        let today = Calendar.current.startOfDay(for: Date())
+        return Calendar.current.startOfDay(for: selectedDate) < today
+    }
+
+    func meals(for date: Date) -> [LoggedMeal] {
+        let day = Calendar.current.startOfDay(for: date)
+        return savedMeals
+            .filter { Calendar.current.isDate($0.loggedAt, inSameDayAs: day) }
             .sorted { $0.loggedAt > $1.loggedAt }
     }
 
+    func consumedCalories(for date: Date) -> Int {
+        meals(for: date).reduce(0) { $0 + $1.calories }
+    }
+
+    func consumedProtein(for date: Date) -> Int {
+        meals(for: date).reduce(0) { $0 + $1.protein }
+    }
+
+    func consumedCarbs(for date: Date) -> Int {
+        meals(for: date).reduce(0) { $0 + $1.carbs }
+    }
+
+    func consumedFat(for date: Date) -> Int {
+        meals(for: date).reduce(0) { $0 + $1.fat }
+    }
+
     var todayConsumedCalories: Int {
-        todayMeals.reduce(0) { $0 + $1.calories }
+        consumedCalories(for: Date())
+    }
+
+    var selectedDayConsumedCalories: Int {
+        consumedCalories(for: selectedDate)
     }
 
     var todayConsumedProtein: Int {
-        todayMeals.reduce(0) { $0 + $1.protein }
+        consumedProtein(for: Date())
+    }
+
+    var selectedDayConsumedProtein: Int {
+        consumedProtein(for: selectedDate)
     }
 
     var todayConsumedCarbs: Int {
-        todayMeals.reduce(0) { $0 + $1.carbs }
+        consumedCarbs(for: Date())
+    }
+
+    var selectedDayConsumedCarbs: Int {
+        consumedCarbs(for: selectedDate)
     }
 
     var todayConsumedFat: Int {
-        todayMeals.reduce(0) { $0 + $1.fat }
+        consumedFat(for: Date())
+    }
+
+    var selectedDayConsumedFat: Int {
+        consumedFat(for: selectedDate)
+    }
+
+    func goToPreviousDay() {
+        guard let previousDay = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) else {
+            return
+        }
+        selectedDate = Calendar.current.startOfDay(for: previousDay)
+    }
+
+    func goToNextDay() {
+        guard canGoToNextDay,
+              let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) else {
+            return
+        }
+
+        let today = Calendar.current.startOfDay(for: Date())
+        let normalizedNextDay = Calendar.current.startOfDay(for: nextDay)
+        selectedDate = min(normalizedNextDay, today)
+    }
+
+    func loggedDateForSelectedDay(now: Date = Date()) -> Date {
+        let calendar = Calendar.current
+        let dayComponents = calendar.dateComponents([.year, .month, .day], from: selectedDate)
+        let timeComponents = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: now)
+
+        var combinedComponents = DateComponents()
+        combinedComponents.year = dayComponents.year
+        combinedComponents.month = dayComponents.month
+        combinedComponents.day = dayComponents.day
+        combinedComponents.hour = timeComponents.hour
+        combinedComponents.minute = timeComponents.minute
+        combinedComponents.second = timeComponents.second
+        combinedComponents.nanosecond = timeComponents.nanosecond
+
+        return calendar.date(from: combinedComponents) ?? selectedDate
     }
 
     var canCompleteOnboarding: Bool {

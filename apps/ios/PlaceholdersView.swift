@@ -67,39 +67,52 @@ struct TodayPlaceholderView: View {
     }
 
     private var caloriesEaten: Int {
-        appState.todayConsumedCalories
+        appState.selectedDayConsumedCalories
     }
 
     private var proteinEaten: Int {
-        appState.todayConsumedProtein
+        appState.selectedDayConsumedProtein
     }
 
     private var carbsEaten: Int {
-        appState.todayConsumedCarbs
+        appState.selectedDayConsumedCarbs
     }
 
     private var fatEaten: Int {
-        appState.todayConsumedFat
+        appState.selectedDayConsumedFat
     }
 
-    private var todayMeals: [LoggedMeal] {
-        appState.todayMeals
+    private var dayMeals: [LoggedMeal] {
+        appState.selectedDayMeals
     }
 
     private var caloriesRemaining: Int {
         max(target.calories - caloriesEaten, 0)
     }
 
+    private var selectedDayLabel: String {
+        if Calendar.current.isDateInToday(appState.selectedDate) {
+            return "Today"
+        }
+        if Calendar.current.isDateInYesterday(appState.selectedDate) {
+            return "Yesterday"
+        }
+
+        return appState.selectedDate.formatted(date: .abbreviated, time: .omitted)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Today")
+                    Text("Daily Log")
                         .font(.largeTitle.bold())
+
+                    dateNavigationRow
 
                     calorieSummaryCard
                     macroProgressCard
-                    todayMealsCard
+                    dayMealsCard
 
                     Button {
                         appState.openScanMeal()
@@ -111,6 +124,34 @@ struct TodayPlaceholderView: View {
                 }
                 .padding(16)
             }
+        }
+    }
+
+    private var dateNavigationRow: some View {
+        HStack {
+            Button {
+                appState.goToPreviousDay()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.bordered)
+
+            Spacer()
+
+            Text(selectedDayLabel)
+                .font(.headline)
+
+            Spacer()
+
+            Button {
+                appState.goToNextDay()
+            } label: {
+                Image(systemName: "chevron.right")
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.bordered)
+            .disabled(!appState.canGoToNextDay)
         }
     }
 
@@ -130,18 +171,18 @@ struct TodayPlaceholderView: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 
-    private var todayMealsCard: some View {
+    private var dayMealsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Meals Logged Today")
+            Text("Meals")
                 .font(.headline)
 
-            if todayMeals.isEmpty {
-                Text("No meals logged yet today.")
+            if dayMeals.isEmpty {
+                Text("No meals logged for this day.")
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(todayMeals) { meal in
-                    todayMealRow(meal)
-                    if meal.id != todayMeals.last?.id {
+                ForEach(dayMeals) { meal in
+                    mealRow(meal)
+                    if meal.id != dayMeals.last?.id {
                         Divider()
                     }
                 }
@@ -152,7 +193,7 @@ struct TodayPlaceholderView: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 
-    private func todayMealRow(_ meal: LoggedMeal) -> some View {
+    private func mealRow(_ meal: LoggedMeal) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(meal.name)
@@ -289,75 +330,8 @@ struct ScanMealPlaceholderView: View {
 }
 
 struct HistoryPlaceholderView: View {
-    @EnvironmentObject private var appState: AppState
-
-    private var groupedMeals: [(day: Date, meals: [LoggedMeal])] {
-        let grouped = Dictionary(grouping: appState.savedMeals) { meal in
-            Calendar.current.startOfDay(for: meal.loggedAt)
-        }
-
-        return grouped
-            .map { (day: $0.key, meals: $0.value.sorted { $0.loggedAt > $1.loggedAt }) }
-            .sorted { $0.day > $1.day }
-    }
-
-    private var dayFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter
-    }
-
-    private func dayTitle(for day: Date) -> String {
-        if Calendar.current.isDateInToday(day) {
-            return "Today"
-        }
-        if Calendar.current.isDateInYesterday(day) {
-            return "Yesterday"
-        }
-        return dayFormatter.string(from: day)
-    }
-
     var body: some View {
-        NavigationStack {
-            Group {
-                if groupedMeals.isEmpty {
-                    ContentUnavailableView(
-                        "No Meals Yet",
-                        systemImage: "fork.knife",
-                        description: Text("Saved meals in this session will appear here.")
-                    )
-                } else {
-                    List {
-                        ForEach(groupedMeals, id: \.day) { section in
-                            Section(dayTitle(for: section.day)) {
-                                ForEach(section.meals) { meal in
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(meal.name)
-                                            .font(.headline)
-                                        Text("\(meal.calories) kcal • P \(meal.protein)g • C \(meal.carbs)g • F \(meal.fat)g")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                        HStack(spacing: 8) {
-                                            Text(meal.loggedAt, style: .time)
-                                                .font(.caption)
-                                                .foregroundStyle(.tertiary)
-                                            Text(meal.source.rawValue)
-                                                .font(.caption2)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(.thinMaterial, in: Capsule())
-                                        }
-                                    }
-                                    .padding(.vertical, 2)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("History")
-        }
+        TodayPlaceholderView()
     }
 }
 
@@ -457,6 +431,7 @@ private enum MockMealPreset {
 
 private struct MealReviewView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
 
     let onSave: (LoggedMeal) -> Void
 
@@ -503,7 +478,7 @@ private struct MealReviewView: View {
             }
 
             Section {
-                Button("Save Meal to Today") {
+                Button("Save Meal") {
                     saveMeal()
                 }
                 .disabled(!canAttemptSave)
@@ -564,7 +539,7 @@ private struct MealReviewView: View {
                 protein: parsedProtein,
                 carbs: parsedCarbs,
                 fat: parsedFat,
-                loggedAt: Date(),
+                loggedAt: appState.loggedDateForSelectedDay(),
                 source: source
             )
         )
