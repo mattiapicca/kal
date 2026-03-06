@@ -2,47 +2,37 @@ import SwiftUI
 
 struct OnboardingView: View {
     @EnvironmentObject private var appState: AppState
-    @State private var selectedSex = "Female"
-    @State private var age = "28"
-    @State private var heightCm = "170"
-    @State private var currentWeightKg = "72"
-    @State private var selectedActivityLevel = "Moderate"
-    @State private var selectedGoal = "Lose"
-
-    private let sexOptions = ["Female", "Male"]
-    private let activityLevels = ["Low", "Moderate", "High"]
-    private let goalOptions = ["Lose", "Maintain", "Gain"]
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("About You") {
-                    Picker("Sex", selection: $selectedSex) {
-                        ForEach(sexOptions, id: \.self) { option in
-                            Text(option)
+                    Picker("Sex", selection: $appState.profile.sex) {
+                        ForEach(ProfileSex.allCases, id: \.self) { option in
+                            Text(option.rawValue)
                         }
                     }
 
-                    TextField("Age", text: $age)
+                    TextField("Age", text: $appState.profile.ageInput)
                         .keyboardType(.numberPad)
 
-                    TextField("Height (cm)", text: $heightCm)
+                    TextField("Height (cm)", text: $appState.profile.heightCmInput)
                         .keyboardType(.numberPad)
 
-                    TextField("Current Weight (kg)", text: $currentWeightKg)
+                    TextField("Current Weight (kg)", text: $appState.profile.currentWeightKgInput)
                         .keyboardType(.decimalPad)
                 }
 
                 Section("Lifestyle") {
-                    Picker("Activity Level", selection: $selectedActivityLevel) {
-                        ForEach(activityLevels, id: \.self) { level in
-                            Text(level)
+                    Picker("Activity Level", selection: $appState.profile.activityLevel) {
+                        ForEach(ActivityLevel.allCases, id: \.self) { level in
+                            Text(level.rawValue)
                         }
                     }
 
-                    Picker("Goal", selection: $selectedGoal) {
-                        ForEach(goalOptions, id: \.self) { goal in
-                            Text(goal)
+                    Picker("Goal", selection: $appState.profile.goal) {
+                        ForEach(GoalType.allCases, id: \.self) { goal in
+                            Text(goal.rawValue)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -52,9 +42,16 @@ struct OnboardingView: View {
                     Button("Complete Onboarding") {
                         appState.completeOnboarding()
                     }
+                    .disabled(!appState.canCompleteOnboarding)
                     .frame(maxWidth: .infinity, alignment: .center)
                 } footer: {
-                    Text("Targets and meal estimates are placeholders for now.")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Targets and meal estimates are placeholders for now.")
+                        if let validationMessage = appState.onboardingValidationMessage {
+                            Text(validationMessage)
+                                .foregroundStyle(.red)
+                        }
+                    }
                 }
             }
             .navigationTitle("Welcome to Kal")
@@ -65,17 +62,18 @@ struct OnboardingView: View {
 struct TodayPlaceholderView: View {
     @EnvironmentObject private var appState: AppState
 
-    private let calorieTarget = 2_100
+    // Explicitly mocked for this iteration.
     private let caloriesEaten = 1_240
-    private let proteinTarget = 140
     private let proteinEaten = 78
-    private let carbsTarget = 220
     private let carbsEaten = 130
-    private let fatTarget = 70
     private let fatEaten = 38
 
+    private var target: DailyTarget {
+        appState.dailyTarget ?? .empty
+    }
+
     private var caloriesRemaining: Int {
-        max(calorieTarget - caloriesEaten, 0)
+        max(target.calories - caloriesEaten, 0)
     }
 
     var body: some View {
@@ -107,7 +105,7 @@ struct TodayPlaceholderView: View {
                 .font(.headline)
 
             HStack {
-                statPill(title: "Target", value: "\(calorieTarget)")
+                statPill(title: "Target", value: "\(target.calories)")
                 statPill(title: "Eaten", value: "\(caloriesEaten)")
                 statPill(title: "Remaining", value: "\(caloriesRemaining)")
             }
@@ -122,9 +120,9 @@ struct TodayPlaceholderView: View {
             Text("Macro Progress")
                 .font(.headline)
 
-            macroRow(name: "Protein", eaten: proteinEaten, target: proteinTarget)
-            macroRow(name: "Carbs", eaten: carbsEaten, target: carbsTarget)
-            macroRow(name: "Fat", eaten: fatEaten, target: fatTarget)
+            macroRow(name: "Protein", eaten: proteinEaten, target: target.protein)
+            macroRow(name: "Carbs", eaten: carbsEaten, target: target.carbs)
+            macroRow(name: "Fat", eaten: fatEaten, target: target.fat)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -219,20 +217,26 @@ struct HistoryPlaceholderView: View {
 }
 
 struct ProfilePlaceholderView: View {
+    @EnvironmentObject private var appState: AppState
+
+    private var target: DailyTarget {
+        appState.dailyTarget ?? .empty
+    }
+
     var body: some View {
         NavigationStack {
             List {
                 Section("Stats") {
-                    profileRow(title: "Sex", value: "Female")
-                    profileRow(title: "Age", value: "28")
-                    profileRow(title: "Height", value: "170 cm")
-                    profileRow(title: "Weight", value: "72 kg")
+                    profileRow(title: "Sex", value: appState.profile.sex.rawValue)
+                    profileRow(title: "Age", value: appState.profile.ageInput)
+                    profileRow(title: "Height", value: "\(appState.profile.heightCmInput) cm")
+                    profileRow(title: "Weight", value: "\(appState.profile.currentWeightKgInput) kg")
                 }
 
                 Section("Goal") {
-                    profileRow(title: "Goal", value: "Lose")
-                    profileRow(title: "Activity", value: "Moderate")
-                    profileRow(title: "Daily Target", value: "2100 kcal")
+                    profileRow(title: "Goal", value: appState.profile.goal.rawValue)
+                    profileRow(title: "Activity", value: appState.profile.activityLevel.rawValue)
+                    profileRow(title: "Daily Target", value: "\(target.calories) kcal")
                 }
 
                 Section("Settings") {

@@ -63,10 +63,26 @@ For every task:
 3. Restate the requested outcome in clear product terms
 4. Produce a narrow implementation plan
 5. Identify risks, assumptions, and acceptance criteria
-6. Prefer the smallest implementation slice that can be verified quickly
+6. Save the plan as a markdown file inside `/plans/`
+7. Prefer the smallest implementation slice that can be verified quickly
 
 Do not produce idealized architecture detached from the current repo.
 Do not propose broad rewrites unless they are truly necessary.
+
+## Plan artifact requirement
+Every planning step must create or update a markdown plan file inside `/plans/`.
+
+Filename convention:
+- use `/plans/iteration-N-plan.md` when the iteration number is explicit
+- otherwise use `/plans/YYYY-MM-DD-plan.md`
+
+If a plan file for the same iteration already exists:
+- update it instead of creating a duplicate
+- keep the latest version concise and implementation-oriented
+
+The saved plan must match the final plan shared in chat.
+
+Planning is not complete until the plan file has been written.
 
 ## Required output format
 Always respond with these sections and this order:
@@ -141,3 +157,4 @@ Optimize for building the right product correctly.
 - Be implementation-oriented
 - Do not write production code unless explicitly requested
 - Do not skip acceptance criteria
+- Do not finish after only replying in chat; also write the plan file in `/plans/`
