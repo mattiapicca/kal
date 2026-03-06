@@ -51,6 +51,12 @@ struct LoggedMeal: Identifiable {
     let carbs: Int
     let fat: Int
     let loggedAt: Date
+    let source: LoggedMealSource
+}
+
+enum LoggedMealSource: String {
+    case scanMock = "Scan"
+    case manual = "Manual"
 }
 
 final class AppState: ObservableObject {
@@ -61,20 +67,26 @@ final class AppState: ObservableObject {
     @Published var onboardingValidationMessage: String?
     @Published var savedMeals: [LoggedMeal] = []
 
-    var consumedCalories: Int {
-        savedMeals.reduce(0) { $0 + $1.calories }
+    var todayMeals: [LoggedMeal] {
+        savedMeals
+            .filter { Calendar.current.isDate($0.loggedAt, inSameDayAs: Date()) }
+            .sorted { $0.loggedAt > $1.loggedAt }
     }
 
-    var consumedProtein: Int {
-        savedMeals.reduce(0) { $0 + $1.protein }
+    var todayConsumedCalories: Int {
+        todayMeals.reduce(0) { $0 + $1.calories }
     }
 
-    var consumedCarbs: Int {
-        savedMeals.reduce(0) { $0 + $1.carbs }
+    var todayConsumedProtein: Int {
+        todayMeals.reduce(0) { $0 + $1.protein }
     }
 
-    var consumedFat: Int {
-        savedMeals.reduce(0) { $0 + $1.fat }
+    var todayConsumedCarbs: Int {
+        todayMeals.reduce(0) { $0 + $1.carbs }
+    }
+
+    var todayConsumedFat: Int {
+        todayMeals.reduce(0) { $0 + $1.fat }
     }
 
     var canCompleteOnboarding: Bool {
