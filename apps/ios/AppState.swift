@@ -43,12 +43,39 @@ struct DailyTarget {
     static let empty = DailyTarget(calories: 0, protein: 0, carbs: 0, fat: 0)
 }
 
+struct LoggedMeal: Identifiable {
+    let id: UUID
+    let name: String
+    let calories: Int
+    let protein: Int
+    let carbs: Int
+    let fat: Int
+    let loggedAt: Date
+}
+
 final class AppState: ObservableObject {
     @Published var isOnboardingCompleted = false
     @Published var selectedTab: KalTab = .today
     @Published var profile = UserProfile()
     @Published var dailyTarget: DailyTarget?
     @Published var onboardingValidationMessage: String?
+    @Published var savedMeals: [LoggedMeal] = []
+
+    var consumedCalories: Int {
+        savedMeals.reduce(0) { $0 + $1.calories }
+    }
+
+    var consumedProtein: Int {
+        savedMeals.reduce(0) { $0 + $1.protein }
+    }
+
+    var consumedCarbs: Int {
+        savedMeals.reduce(0) { $0 + $1.carbs }
+    }
+
+    var consumedFat: Int {
+        savedMeals.reduce(0) { $0 + $1.fat }
+    }
 
     var canCompleteOnboarding: Bool {
         Int(profile.ageInput) != nil
@@ -77,6 +104,10 @@ final class AppState: ObservableObject {
 
     func openScanMeal() {
         selectedTab = .scanMeal
+    }
+
+    func saveMeal(_ meal: LoggedMeal) {
+        savedMeals.append(meal)
     }
 
     private static func deriveTargets(weightKg: Double, activityLevel: ActivityLevel, goal: GoalType) -> DailyTarget {

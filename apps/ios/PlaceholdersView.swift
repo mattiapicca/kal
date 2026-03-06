@@ -62,14 +62,24 @@ struct OnboardingView: View {
 struct TodayPlaceholderView: View {
     @EnvironmentObject private var appState: AppState
 
-    // Explicitly mocked for this iteration.
-    private let caloriesEaten = 1_240
-    private let proteinEaten = 78
-    private let carbsEaten = 130
-    private let fatEaten = 38
-
     private var target: DailyTarget {
         appState.dailyTarget ?? .empty
+    }
+
+    private var caloriesEaten: Int {
+        appState.consumedCalories
+    }
+
+    private var proteinEaten: Int {
+        appState.consumedProtein
+    }
+
+    private var carbsEaten: Int {
+        appState.consumedCarbs
+    }
+
+    private var fatEaten: Int {
+        appState.consumedFat
     }
 
     private var caloriesRemaining: Int {
@@ -137,7 +147,7 @@ struct TodayPlaceholderView: View {
                 Text("\(eaten) / \(target) g")
                     .foregroundStyle(.secondary)
             }
-            ProgressView(value: Double(eaten), total: Double(target))
+            ProgressView(value: Double(eaten), total: Double(max(target, 1)))
         }
     }
 
@@ -156,55 +166,95 @@ struct TodayPlaceholderView: View {
 }
 
 struct ScanMealPlaceholderView: View {
+    @EnvironmentObject private var appState: AppState
+    @State private var isAnalyzing = false
+    @State private var mealDraft: MealDraft?
+
     var body: some View {
         NavigationStack {
             List {
                 Section("Meal Photo") {
-                    Button("Take Photo") {}
+                    Button("Take Photo") {
+                        runMockScan(with: .takePhoto)
+                    }
                         .buttonStyle(.borderedProminent)
+                        .disabled(isAnalyzing)
 
-                    Button("Choose Photo") {}
+                    Button("Choose Photo") {
+                        runMockScan(with: .choosePhoto)
+                    }
+                    .disabled(isAnalyzing)
                 }
 
                 Section("How Kal Estimates Meals") {
                     Text("Kal uses AI to estimate calories and macros from your meal photo.")
                     Text("You will always be able to review and edit the estimate before saving.")
                 }
+
+                if isAnalyzing {
+                    Section("Analyzing") {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text("Estimating meal nutrition...")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
             .navigationTitle("Scan Meal")
+            .navigationDestination(item: $mealDraft) { draft in
+                MealReviewView(initialDraft: draft) { savedMeal in
+                    appState.saveMeal(savedMeal)
+                    appState.selectedTab = .today
+                    mealDraft = nil
+                    isAnalyzing = false
+                }
+            }
+        }
+    }
+
+    private func runMockScan(with preset: MockMealPreset) {
+        guard !isAnalyzing else { return }
+        isAnalyzing = true
+
+        Task {
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            await MainActor.run {
+                mealDraft = preset.makeDraft()
+                isAnalyzing = false
+            }
         }
     }
 }
 
 struct HistoryPlaceholderView: View {
-    private let groupedMeals: [(day: String, meals: [HistoryMeal])] = [
-        (
-            day: "Today",
-            meals: [
-                HistoryMeal(name: "Chicken Bowl", calories: 620, protein: 45, carbs: 58, fat: 19),
-                HistoryMeal(name: "Greek Yogurt + Berries", calories: 280, protein: 20, carbs: 24, fat: 9)
-            ]
-        ),
-        (
-            day: "Yesterday",
-            meals: [
-                HistoryMeal(name: "Salmon + Rice", calories: 710, protein: 42, carbs: 65, fat: 27)
-            ]
-        )
-    ]
+    @EnvironmentObject private var appState: AppState
+
+    private var meals: [LoggedMeal] {
+        appState.savedMeals.sorted { $0.loggedAt > $1.loggedAt }
+    }
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(groupedMeals, id: \.day) { group in
-                    Section(group.day) {
-                        ForEach(group.meals) { meal in
+            Group {
+                if meals.isEmpty {
+                    ContentUnavailableView(
+                        "No Meals Yet",
+                        systemImage: "fork.knife",
+                        description: Text("Saved meals in this session will appear here.")
+                    )
+                } else {
+                    List {
+                        ForEach(meals) { meal in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(meal.name)
                                     .font(.headline)
                                 Text("\(meal.calories) kcal • P \(meal.protein)g • C \(meal.carbs)g • F \(meal.fat)g")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
+                                Text(meal.loggedAt, style: .time)
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
                             }
                             .padding(.vertical, 2)
                         }
@@ -259,11 +309,130 @@ struct ProfilePlaceholderView: View {
     }
 }
 
-private struct HistoryMeal: Identifiable {
+private struct MealDraft: Identifiable, Hashable {
     let id = UUID()
-    let name: String
-    let calories: Int
-    let protein: Int
-    let carbs: Int
-    let fat: Int
+    var name: String
+    var calories: String
+    var protein: String
+    var carbs: String
+    var fat: String
+}
+
+private enum MockMealPreset {
+    case takePhoto
+    case choosePhoto
+
+    func makeDraft() -> MealDraft {
+        switch self {
+        case .takePhoto:
+            return MealDraft(name: "Chicken Rice Bowl", calories: "620", protein: "42", carbs: "58", fat: "20")
+        case .choosePhoto:
+            return MealDraft(name: "Turkey Sandwich", calories: "480", protein: "32", carbs: "45", fat: "18")
+        }
+    }
+}
+
+private struct MealReviewView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let onSave: (LoggedMeal) -> Void
+
+    @State private var name: String
+    @State private var calories: String
+    @State private var protein: String
+    @State private var carbs: String
+    @State private var fat: String
+    @State private var validationMessage: String?
+
+    init(initialDraft: MealDraft, onSave: @escaping (LoggedMeal) -> Void) {
+        self.onSave = onSave
+        _name = State(initialValue: initialDraft.name)
+        _calories = State(initialValue: initialDraft.calories)
+        _protein = State(initialValue: initialDraft.protein)
+        _carbs = State(initialValue: initialDraft.carbs)
+        _fat = State(initialValue: initialDraft.fat)
+    }
+
+    var body: some View {
+        Form {
+            Section("Review Estimate") {
+                TextField("Meal Name", text: $name)
+                TextField("Calories", text: $calories)
+                    .keyboardType(.numberPad)
+                TextField("Protein (g)", text: $protein)
+                    .keyboardType(.numberPad)
+                TextField("Carbs (g)", text: $carbs)
+                    .keyboardType(.numberPad)
+                TextField("Fat (g)", text: $fat)
+                    .keyboardType(.numberPad)
+            }
+
+            if let validationMessage {
+                Section {
+                    Text(validationMessage)
+                        .foregroundStyle(.red)
+                }
+            }
+
+            Section {
+                Button("Save Meal") {
+                    saveMeal()
+                }
+                .disabled(!canAttemptSave)
+            } footer: {
+                Text("Nutrition values are estimated. Review and adjust before saving.")
+            }
+        }
+        .navigationTitle("Meal Review")
+    }
+
+    private var canAttemptSave: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !calories.isEmpty
+            && !protein.isEmpty
+            && !carbs.isEmpty
+            && !fat.isEmpty
+    }
+
+    private func saveMeal() {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            validationMessage = "Add a meal name before saving."
+            return
+        }
+
+        guard let parsedCalories = Int(calories), (1...5_000).contains(parsedCalories) else {
+            validationMessage = "Calories must be a number between 1 and 5000."
+            return
+        }
+
+        guard let parsedProtein = Int(protein), (0...500).contains(parsedProtein) else {
+            validationMessage = "Protein must be between 0 and 500 g."
+            return
+        }
+
+        guard let parsedCarbs = Int(carbs), (0...800).contains(parsedCarbs) else {
+            validationMessage = "Carbs must be between 0 and 800 g."
+            return
+        }
+
+        guard let parsedFat = Int(fat), (0...300).contains(parsedFat) else {
+            validationMessage = "Fat must be between 0 and 300 g."
+            return
+        }
+
+        validationMessage = nil
+        onSave(
+            LoggedMeal(
+                id: UUID(),
+                name: trimmedName,
+                calories: parsedCalories,
+                protein: parsedProtein,
+                carbs: parsedCarbs,
+                fat: parsedFat,
+                loggedAt: Date()
+            )
+        )
+        dismiss()
+    }
 }
